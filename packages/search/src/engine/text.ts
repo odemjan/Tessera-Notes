@@ -30,6 +30,24 @@ export function tokenSpans(text: string): Array<{ token: string; start: number; 
   return spans;
 }
 
+/** Counts distinct matching terms without allocating a span object for every token. */
+export function matchingTokenCounts(
+  text: string,
+  terms: ReadonlySet<string>,
+): { distinct: number; occurrences: number } {
+  if (!text || terms.size === 0) return { distinct: 0, occurrences: 0 };
+  const found = new Set<string>();
+  let occurrences = 0;
+  TOKEN.lastIndex = 0;
+  for (let match = TOKEN.exec(text); match; match = TOKEN.exec(text)) {
+    const term = normalizeTerm(match[0]);
+    if (!terms.has(term)) continue;
+    found.add(term);
+    occurrences += 1;
+  }
+  return { distinct: found.size, occurrences };
+}
+
 /**
  * Ranges of the tokens of `text` whose term is in `terms` (the document terms a query matched,
  * so prefix and fuzzy matches are highlighted as whole words).

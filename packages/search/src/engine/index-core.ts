@@ -14,7 +14,14 @@ import {
 } from '@tessera/core';
 import MiniSearch, { type AsPlainObject, type SearchResult } from 'minisearch';
 import { docFromBytes, readContent, readRowValues, segmentsText, type RowValues } from './extract';
-import { escapeRegExp, highlightTerms, normalizeTerm, snippetAround, tokenSpans } from './text';
+import {
+  escapeRegExp,
+  highlightTerms,
+  matchingTokenCounts,
+  normalizeTerm,
+  snippetAround,
+  tokenSpans,
+} from './text';
 import type {
   BlockEntry,
   ContentRecord,
@@ -581,18 +588,10 @@ export class IndexCore {
     let best: BlockEntry | null = null;
     let bestScore = 0;
     for (const block of blocks) {
-      const found = new Set<string>();
-      let occurrences = 0;
-      for (const span of tokenSpans(block.text)) {
-        const term = normalizeTerm(span.token);
-        if (!terms.has(term)) continue;
-        found.add(term);
-        occurrences += 1;
-      }
-      if (found.size === 0) continue;
+      const { distinct, occurrences } = matchingTokenCounts(block.text, terms);
+      if (distinct === 0) continue;
       // Distinct terms matter most, then body over headings, then how often they occur.
-      const score =
-        found.size * 10 + (preferBody && !block.level ? 5 : 0) + Math.min(occurrences, 4);
+      const score = distinct * 10 + (preferBody && !block.level ? 5 : 0) + Math.min(occurrences, 4);
       if (score > bestScore) {
         best = block;
         bestScore = score;
